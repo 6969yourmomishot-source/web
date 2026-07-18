@@ -400,6 +400,9 @@ class Handler(SimpleHTTPRequestHandler):
         m = re.match(r"^/api/members/([^/]+)/status$", path)
         if m:
             return self._set_status(m.group(1), body)
+        m = re.match(r"^/api/members/([^/]+)/edit$", path)
+        if m:
+            return self._edit_member(m.group(1), body)
         m = re.match(r"^/api/members/([^/]+)/delete$", path)
         if m:
             return self._delete_member(m.group(1))
@@ -588,6 +591,23 @@ class Handler(SimpleHTTPRequestHandler):
         for m in data["members"]:
             if m["id"] == mid:
                 m["status"] = status
+                m["updatedAt"] = now_iso()
+                save_data(data)
+                return self._send_json(m)
+        return self._send_json({"error": "会员不存在"}, 404)
+
+    def _edit_member(self, mid, body):
+        data = load_data() or {"members": [], "seq": 1000}
+        for m in data["members"]:
+            if m["id"] == mid:
+                for k in ("platform", "lastLogin", "reason", "remark", "group"):
+                    if k in body:
+                        m[k] = (body.get(k) or "").strip()
+                if "account" in body:
+                    acc = re.sub(r"[^A-Za-z0-9]", "", body.get("account") or "")
+                    if not acc:
+                        return self._send_json({"error": "会员账号不能为空"}, 400)
+                    m["account"] = acc
                 m["updatedAt"] = now_iso()
                 save_data(data)
                 return self._send_json(m)

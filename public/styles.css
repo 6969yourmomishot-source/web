@@ -238,6 +238,14 @@ a  { color: inherit; text-decoration: none; }
   padding: 8px 10px; font-family: inherit; font-size: .92rem; line-height: 1.6;
 }
 .ann-edit-input:focus { outline: none; box-shadow: 0 0 0 3px var(--series-1-soft); }
+
+/* 待处理内联编辑 */
+.rec-editing { display: block; }
+.rec-edit { width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
+.ef-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ef { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--text-2); }
+.ef .ann-edit-input { min-height: 56px; }
+@media (max-width: 640px) { .ef-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .last-updated { display: none; } }
 
 .kpi-row {

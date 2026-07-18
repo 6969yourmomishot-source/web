@@ -33,6 +33,7 @@ function buildPlatSeg(id, active) {
 
 let state = { members: [], today: "", statuses: ALL_STATUSES, user: null, config: { maxMembers: 0, groups: [] }, announcements: [] };
 let pendGroup = "全部";
+let editingMemberId = null;   // 待处理内联编辑中的会员
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtTime = (iso) => iso ? `${iso.slice(5, 10)} ${iso.slice(11, 16)}` : "—";
@@ -303,7 +304,7 @@ function renderPending() {
     updateBatchBar(); return;
   }
   const line = (label, val) => val ? `<div class="rec-sub muted">${label}：${esc(val)}</div>` : "";
-  box.innerHTML = rows.map((m) => `
+  box.innerHTML = rows.map((m) => m.id === editingMemberId ? memberEditHtml(m) : `
     <div class="rec ${pendSel.has(m.id) ? "is-sel" : ""}">
       <input type="checkbox" class="rec-check" data-check="${esc(m.id)}" ${pendSel.has(m.id) ? "checked" : ""} aria-label="选择">
       <div class="rec-main">
@@ -318,10 +319,29 @@ function renderPending() {
         <div class="btn-group">
           ${PENDING_ACTIONS.map((st) => `<button class="chip chip-${STATUS_CLS[st]} ${m.status === st ? "is-active" : ""}" data-id="${esc(m.id)}" data-status="${st}">${st}</button>`).join("")}
         </div>
+        <button class="btn-ghost btn-xs" data-medit="${esc(m.id)}">编辑</button>
         <button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button>
       </div>
     </div>`).join("");
   updateBatchBar();
+}
+function memberEditHtml(m) {
+  return `<div class="rec rec-editing">
+    <div class="rec-edit">
+      <div class="ef-grid">
+        <label class="ef">平台<input class="mini-input" data-f="platform" value="${esc(m.platform)}"></label>
+        <label class="ef">会员<input class="mini-input" data-f="account" value="${esc(m.account)}"></label>
+        <label class="ef">最后登入时间<input class="mini-input" data-f="lastLogin" value="${esc(m.lastLogin)}"></label>
+        <label class="ef">群组<select class="mini-input" data-f="group">${groupOptions(m.group)}</select></label>
+      </div>
+      <label class="ef">原因<textarea class="ann-edit-input" data-f="reason" rows="2">${esc(m.reason)}</textarea></label>
+      <label class="ef">备注<textarea class="ann-edit-input" data-f="remark" rows="2">${esc(m.remark)}</textarea></label>
+      <div class="ann-actions">
+        <button class="btn-primary btn-xs" data-medsave="${esc(m.id)}">保存</button>
+        <button class="btn-ghost btn-xs" data-medcancel="1">取消</button>
+      </div>
+    </div>
+  </div>`;
 }
 function updateBatchBar() {
   const n = pendSel.size;
@@ -489,6 +509,31 @@ $("#pendPlatSeg").addEventListener("click", (e) => {
   renderPending();
 });
 
+// 待处理：内联编辑
+$("#pendingList").addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-medit]");
+  if (ed) {
+    editingMemberId = ed.dataset.medit;
+    renderPending();
+    const inp = $('#pendingList .rec-editing input[data-f="account"]');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    return;
+  }
+  const cancel = e.target.closest("[data-medcancel]");
+  if (cancel) { editingMemberId = null; renderPending(); return; }
+  const save = e.target.closest("[data-medsave]");
+  if (save) {
+    const id = save.dataset.medsave;
+    const payload = {};
+    save.closest(".rec-editing").querySelectorAll("[data-f]").forEach((el) => { payload[el.dataset.f] = el.value; });
+    if (!(payload.account || "").replace(/[^A-Za-z0-9]/g, "")) { toast("会员账号不能为空"); return; }
+    try {
+      await api(`/api/members/${encodeURIComponent(id)}/edit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      editingMemberId = null;
+      await loadMembers(); renderCurrent(); toast("已保存");
+    } catch (err) { toast("保存失败：" + err.message); }
+  }
+});
 // 待处理：多选勾选
 $("#pendingList").addEventListener("change", (e) => {
   const cb = e.target.closest(".rec-check[data-check]");
