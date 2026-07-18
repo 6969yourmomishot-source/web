@@ -557,8 +557,11 @@ $("#usersBody").addEventListener("click", async (e) => {
     const name = rp.dataset.resetpw;
     const pw = window.prompt(`为「${name}」设置新密码（至少4位）：`);
     if (pw == null) return;
-    if (pw.length < 4) { toast("密码至少4位"); return; }
-    try { await api(`/api/users/${encodeURIComponent(name)}/password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) }); toast("已改密码"); }
+    if (pw.trim().length < 4) { toast("密码至少4位"); return; }
+    const pw2 = window.prompt("再输入一次新密码确认：");
+    if (pw2 == null) return;
+    if (pw !== pw2) { toast("两次输入不一致"); return; }
+    try { await api(`/api/users/${encodeURIComponent(name)}/password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) }); toast(`已把「${name}」密码改为：${pw}`); }
     catch (err) { toast(err.message); }
     return;
   }
