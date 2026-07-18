@@ -369,6 +369,9 @@ class Handler(SimpleHTTPRequestHandler):
         m = re.match(r"^/api/users/([^/]+)/nickname$", path)
         if m:
             return self._set_nickname(user, m.group(1), body)
+        m = re.match(r"^/api/users/([^/]+)/role$", path)
+        if m:
+            return self._set_role(user, m.group(1), body)
         if path == "/api/config":
             return self._save_config(user, body)
         # 会员操作（任何登录用户）
@@ -436,6 +439,24 @@ class Handler(SimpleHTTPRequestHandler):
         data.setdefault("users", []).append(
             {"username": username, "nickname": (body.get("nickname") or "").strip(),
              "salt": salt, "hash": h, "role": role, "createdAt": now_iso()})
+        save_users(data)
+        return self._send_json({"ok": True})
+
+    def _set_role(self, actor, target, body):
+        if actor["role"] != "admin":
+            return self._send_json({"error": "无权限"}, 403)
+        role = body.get("role")
+        if role not in ROLES:
+            return self._send_json({"error": "角色无效"}, 400)
+        data = load_users()
+        users = data.get("users", [])
+        tgt = next((u for u in users if u["username"] == target), None)
+        if not tgt:
+            return self._send_json({"error": "账号不存在"}, 404)
+        if tgt["role"] == "admin" and role != "admin" and \
+                len([u for u in users if u["role"] == "admin"]) <= 1:
+            return self._send_json({"error": "不能取消唯一管理员的权限"}, 400)
+        tgt["role"] = role
         save_users(data)
         return self._send_json({"ok": True})
 

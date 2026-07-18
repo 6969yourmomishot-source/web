@@ -376,6 +376,7 @@ async function renderAccounts() {
         <td>${esc(u.nickname) || "—"}</td>
         <td>${u.role === "admin" ? "管理员" : "一般人员"}</td>
         <td>
+          <button class="btn-ghost btn-xs" data-setrole="${esc(u.username)}" data-role="${u.role === "admin" ? "staff" : "admin"}">${u.role === "admin" ? "设为一般" : "设为管理"}</button>
           <button class="btn-ghost btn-xs" data-setnick="${esc(u.username)}">改昵称</button>
           <button class="btn-ghost btn-xs" data-resetpw="${esc(u.username)}">改密码</button>
           <button class="btn-del btn-xs" data-deluser="${esc(u.username)}">删除</button>
@@ -559,6 +560,18 @@ $("#usersBody").addEventListener("click", async (e) => {
     if (pw.length < 4) { toast("密码至少4位"); return; }
     try { await api(`/api/users/${encodeURIComponent(name)}/password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) }); toast("已改密码"); }
     catch (err) { toast(err.message); }
+    return;
+  }
+  const sr = e.target.closest("[data-setrole]");
+  if (sr) {
+    const name = sr.dataset.setrole, role = sr.dataset.role;
+    const label = role === "admin" ? "管理员" : "一般人员";
+    if (!window.confirm(`确定把「${name}」改为${label}？`)) return;
+    try {
+      await api(`/api/users/${encodeURIComponent(name)}/role`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+      toast(`已改为${label}`); renderAccounts();
+      if (name === state.user.username) { state.user.role = role; applyUserUI(); }
+    } catch (err) { toast(err.message); }
     return;
   }
   const nk = e.target.closest("[data-setnick]");
