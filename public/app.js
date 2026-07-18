@@ -213,7 +213,7 @@ const scopeLabel = () => scopeLabelOf(histState);
 // ---------- 渲染：总览 ----------
 function annItemHtml(a, withActions) {
   return `<div class="ann-item"${withActions ? ` data-annid="${esc(a.id)}"` : ""}>
-      <div class="ann-meta muted tiny">${fmtTime(a.createdAt)} · ${esc(a.author) || "—"}</div>
+      <div class="ann-meta muted tiny">${(a.createdAt || "").slice(0, 16).replace("T", " ")}</div>
       <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
       ${withActions ? `<div class="ann-actions">
         <button class="btn-ghost btn-xs" data-annedit="${esc(a.id)}">编辑</button>
