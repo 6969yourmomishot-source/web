@@ -330,9 +330,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/login.js":          # 登录页脚本，公开
             return super().do_GET()
         if path == "/api/needs-setup":
-            return self._send_json({"setup": len(load_users().get("users", [])) == 0,
-                                    "dataDir": DATA_DIR,
-                                    "volume": os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")})
+            return self._send_json({"setup": len(load_users().get("users", [])) == 0})
         user = self._current_user()
         if path.startswith("/api/"):
             if not user:
@@ -354,8 +352,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self._login(body)
         if path == "/api/bootstrap":
             return self._bootstrap(body)
-        if path == "/api/_import":          # 临时迁移用（仅目标为空时可导入）
-            return self._import(body)
         user = self._current_user()
         if not user:
             return self._send_json({"error": "未登录"}, 401)
@@ -423,25 +419,6 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _logout(self):
         return self._send_json({"ok": True}, cookie=self._make_cookie("", 0))
-
-    # -------- 临时：数据迁移（用完即移除）--------
-    def _import(self, body):
-        if load_users().get("users"):
-            return self._send_json({"error": "目标已有账号，拒绝导入"}, 403)
-        users = body.get("users")
-        data = body.get("data")
-        if not isinstance(users, list) or not isinstance(data, dict):
-            return self._send_json({"error": "数据格式错误"}, 400)
-        udata = load_users()
-        udata["users"] = users
-        if not udata.get("secret"):
-            udata["secret"] = secrets.token_hex(32)
-        save_users(udata)
-        save_data(data)
-        return self._send_json({"ok": True, "users": len(users),
-                                "members": len(data.get("members", [])),
-                                "dataDir": DATA_DIR,
-                                "volume": os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")})
 
     # -------- 账号管理（管理员）--------
     def _create_user(self, actor, body):
@@ -533,11 +510,6 @@ class Handler(SimpleHTTPRequestHandler):
         p = self.path.split("?", 1)[0]
         if p == "/api/me":
             return self._send_json({"user": public_user(user)})
-        if p == "/api/_export":             # 临时迁移用（管理员）
-            if user["role"] != "admin":
-                return self._send_json({"error": "无权限"}, 403)
-            return self._send_json({"users": load_users().get("users", []),
-                                    "data": load_data() or {"members": [], "seq": 1000}})
         if p == "/api/members":
             data = load_data() or {"members": [], "seq": 1000}
             return self._send_json({"members": data["members"],
