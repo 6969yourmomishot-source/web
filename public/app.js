@@ -211,13 +211,32 @@ function scopeLabelOf(st) {
 const scopeLabel = () => scopeLabelOf(histState);
 
 // ---------- 渲染：总览 ----------
-function annItemHtml(a, withActions) {
-  return `<div class="ann-item"${withActions ? ` data-annid="${esc(a.id)}"` : ""}>
-      <div class="ann-meta muted tiny">${(a.createdAt || "").slice(0, 16).replace("T", " ")}</div>
+let editingAnnId = null;
+const annDate = (a) => (a.createdAt || "").slice(0, 16).replace("T", " ");
+function annBoardHtml(a) {
+  return `<div class="ann-item">
+      <div class="ann-meta muted tiny">${annDate(a)}</div>
       <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
-      ${withActions ? `<div class="ann-actions">
+    </div>`;
+}
+function annEditorHtml(a) {
+  if (a.id === editingAnnId) {
+    return `<div class="ann-item">
+      <div class="ann-meta muted tiny">${annDate(a)}</div>
+      <textarea class="ann-edit-input" rows="5">${esc(a.text)}</textarea>
+      <div class="ann-actions">
+        <button class="btn-primary btn-xs" data-annsave="${esc(a.id)}">保存</button>
+        <button class="btn-ghost btn-xs" data-anncancel="1">取消</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="ann-item">
+      <div class="ann-meta muted tiny">${annDate(a)}</div>
+      <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
+      <div class="ann-actions">
         <button class="btn-ghost btn-xs" data-annedit="${esc(a.id)}">编辑</button>
-        <button class="btn-del btn-xs" data-anndel="${esc(a.id)}">删除</button></div>` : ""}
+        <button class="btn-del btn-xs" data-anndel="${esc(a.id)}">删除</button>
+      </div>
     </div>`;
 }
 function renderOverview() {
@@ -225,7 +244,7 @@ function renderOverview() {
   const board = $("#announceBoard");
   if (board) {
     board.hidden = !anns.length;
-    $("#announceContent").innerHTML = anns.map((a) => annItemHtml(a, false)).join("");
+    $("#announceContent").innerHTML = anns.map((a) => annBoardHtml(a)).join("");
   }
   const inPlat = state.members.filter((m) =>
     platMatch(m, ovPlat) &&
@@ -384,7 +403,7 @@ function renderAnnounce() {
   const anns = state.announcements || [];
   $("#annCount").textContent = `共 ${anns.length} 条`;
   $("#annList").innerHTML = anns.length
-    ? anns.map((a) => annItemHtml(a, true)).join("")
+    ? anns.map((a) => annEditorHtml(a)).join("")
     : `<p class="muted tiny" style="padding:12px">还没有公告</p>`;
 }
 
@@ -524,24 +543,36 @@ $("#postAnnounceBtn").addEventListener("click", async () => {
     await loadMembers(); renderCurrent(); toast("已发布");
   } catch (e) { toast("发布失败：" + e.message); }
 });
-// 公告：编辑 / 删除
+// 公告：内联编辑 / 删除
 $("#annList").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-anndel]");
   if (del) {
     if (!window.confirm("确定删除这条公告？")) return;
-    try { await api(`/api/announcements/${encodeURIComponent(del.dataset.anndel)}/delete`, { method: "POST" }); await loadMembers(); renderCurrent(); toast("已删除"); }
+    try { await api(`/api/announcements/${encodeURIComponent(del.dataset.anndel)}/delete`, { method: "POST" }); editingAnnId = null; await loadMembers(); renderCurrent(); toast("已删除"); }
     catch (err) { toast(err.message); }
     return;
   }
   const ed = e.target.closest("[data-annedit]");
   if (ed) {
-    const id = ed.dataset.annedit;
-    const cur = (state.announcements || []).find((a) => a.id === id);
-    const text = window.prompt("编辑公告：", cur ? cur.text : "");
-    if (text == null) return;
-    if (!text.trim()) { toast("内容不能为空"); return; }
-    try { await api(`/api/announcements/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }); await loadMembers(); renderCurrent(); toast("已更新"); }
-    catch (err) { toast(err.message); }
+    editingAnnId = ed.dataset.annedit;
+    renderAnnounce();
+    const ta = $("#annList .ann-edit-input");
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    return;
+  }
+  const cancel = e.target.closest("[data-anncancel]");
+  if (cancel) { editingAnnId = null; renderAnnounce(); return; }
+  const save = e.target.closest("[data-annsave]");
+  if (save) {
+    const id = save.dataset.annsave;
+    const ta = save.closest(".ann-item").querySelector(".ann-edit-input");
+    const text = (ta.value || "").trim();
+    if (!text) { toast("内容不能为空"); return; }
+    try {
+      await api(`/api/announcements/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      editingAnnId = null;
+      await loadMembers(); renderCurrent(); toast("已更新");
+    } catch (err) { toast(err.message); }
   }
 });
 
