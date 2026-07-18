@@ -221,6 +221,10 @@ a  { color: inherit; text-decoration: none; }
 .group-chip button { border: none; background: var(--border); color: var(--text-1); cursor: pointer; width: 18px; height: 18px; border-radius: 50%; line-height: 1; font-size: .9rem; padding: 0; }
 .group-chip button:hover { background: var(--critical); color: #fff; }
 .group-add { display: flex; gap: 8px; }
+
+/* 公告看板 */
+.announce-board { border-left: 3px solid var(--series-1); }
+.announce-content { font-size: .95rem; line-height: 1.7; color: var(--text-1); white-space: normal; word-break: break-word; }
 @media (max-width: 640px) { .last-updated { display: none; } }
 
 .kpi-row {

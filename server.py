@@ -239,10 +239,15 @@ def read_token(token):
         return None
 
 
+def _pub_config(cfg):
+    return {"maxMembers": int(cfg.get("maxMembers", 0) or 0),
+            "groups": cfg.get("groups", []),
+            "announcement": cfg.get("announcement", "")}
+
+
 def get_config():
     data = load_data() or {}
-    cfg = data.get("config") or {}
-    return {"maxMembers": int(cfg.get("maxMembers", 0) or 0), "groups": cfg.get("groups", [])}
+    return _pub_config(data.get("config") or {})
 
 
 def set_config(patch):
@@ -251,7 +256,7 @@ def set_config(patch):
     cfg.update(patch)
     data["config"] = cfg
     save_data(data)
-    return {"maxMembers": int(cfg.get("maxMembers", 0) or 0), "groups": cfg.get("groups", [])}
+    return _pub_config(cfg)
 
 
 def enforce_cap(data):
@@ -520,6 +525,8 @@ class Handler(SimpleHTTPRequestHandler):
                     seen.add(g)
                     groups.append(g)
             patch["groups"] = groups
+        if "announcement" in body:
+            patch["announcement"] = str(body.get("announcement") or "")
         cfg = set_config(patch)
         data = load_data() or {"members": [], "seq": 1000}
         enforce_cap(data)

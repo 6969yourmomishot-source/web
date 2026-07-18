@@ -211,6 +211,12 @@ const scopeLabel = () => scopeLabelOf(histState);
 
 // ---------- 渲染：总览 ----------
 function renderOverview() {
+  const ann = (state.config.announcement || "").trim();
+  const board = $("#announceBoard");
+  if (board) {
+    board.hidden = !ann;
+    if (ann) $("#announceContent").innerHTML = esc(ann).replace(/\n/g, "<br>");
+  }
   const inPlat = state.members.filter((m) =>
     platMatch(m, ovPlat) &&
     inDateScope(m, ovDate.scope, ovDate.year, ovDate.month));
@@ -349,6 +355,7 @@ const META = {
   pending:  { title: "待处理",   sub: "设置提交中会员的状态" },
   new:      { title: "新增",     sub: "新增提交会员" },
   history:  { title: "历史纪录", sub: "提交过的所有会员" },
+  announce: { title: "公告编辑", sub: "编辑总览公告（管理员）" },
   accounts: { title: "账号管理", sub: "开设 / 删除账号（管理员）" },
   settings: { title: "设置",     sub: "群组与自动删除（管理员）" },
 };
@@ -360,7 +367,12 @@ function renderCurrent() {
   else if (currentView === "history") renderHistory();
   else if (currentView === "accounts") renderAccounts();
   else if (currentView === "settings") renderSettings();
+  else if (currentView === "announce") renderAnnounce();
   // new 视图是表单，无需渲染
+}
+function renderAnnounce() {
+  if (!state.user || state.user.role !== "admin") { showView("overview"); return; }
+  $("#announceInput").value = state.config.announcement || "";
 }
 
 // ---------- 渲染：账号管理 ----------
@@ -489,6 +501,18 @@ $("#logoutBtn").addEventListener("click", async () => {
   try { await api("/api/logout", { method: "POST" }); } catch (e) {}
   location.href = "/login";
 });
+// 保存公告（管理员）
+$("#saveAnnounceBtn").addEventListener("click", async () => {
+  try {
+    const d = await api("/api/config", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ announcement: $("#announceInput").value }),
+    });
+    state.config = d.config || state.config;
+    toast("公告已保存");
+  } catch (e) { toast("保存失败：" + e.message); }
+});
+
 // 自行修改密码（任何登录用户）
 $("#changePwBtn").addEventListener("click", async () => {
   if (!state.user) return;

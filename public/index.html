@@ -21,6 +21,7 @@
         <a class="nav-item"           data-view="pending"  href="#pending"><span class="ni-ico">◷</span>待处理</a>
         <a class="nav-item"           data-view="new"      href="#new"><span class="ni-ico">＋</span>新增</a>
         <a class="nav-item"           data-view="history"  href="#history"><span class="ni-ico">▦</span>历史纪录</a>
+        <a class="nav-item admin-only" data-view="announce" href="#announce"><span class="ni-ico">📢</span>公告编辑</a>
         <a class="nav-item admin-only" data-view="accounts" href="#accounts"><span class="ni-ico">◫</span>账号管理</a>
         <a class="nav-item admin-only" data-view="settings" href="#settings"><span class="ni-ico">⚙</span>设置</a>
       </nav>
@@ -50,6 +51,10 @@
       <main class="content">
         <!-- ========== 总览 ========== -->
         <div class="view" data-view="overview">
+          <section class="card announce-board" id="announceBoard" hidden>
+            <div class="card-head"><div><h2>📢 公告</h2></div></div>
+            <div class="announce-content" id="announceContent"></div>
+          </section>
           <div class="filter-bar">
             <div class="filter-row">
               <span class="filter-label">平台</span>
@@ -218,6 +223,15 @@
             <div class="table-wrap"><table class="data-table"><thead><tr>
               <th class="chk-col"></th><th>编号</th><th>平台</th><th>会员</th><th class="center">最后登入时间</th><th>原因</th><th>备注</th><th>状态</th><th class="center">更新时间</th><th>操作</th>
             </tr></thead><tbody id="historyBody"></tbody></table></div>
+          </section>
+        </div>
+
+        <!-- ========== 公告编辑（管理员）========== -->
+        <div class="view" data-view="announce" hidden>
+          <section class="card form-card">
+            <div class="card-head"><div><h2>公告编辑</h2><p class="muted tiny">显示在总览顶部，所有人可见；留空则不显示</p></div></div>
+            <textarea id="announceInput" class="bulk-input" rows="8" placeholder="输入公告内容…"></textarea>
+            <div class="form-actions"><button class="btn-primary" id="saveAnnounceBtn">保存公告</button></div>
           </section>
         </div>
 
