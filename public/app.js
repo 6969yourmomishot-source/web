@@ -6,13 +6,11 @@ const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 const STATUS_CLS = {
-  "提交中": "info", "不处理": "muted", "冻结": "warning", "线冻结": "violet", "已处理": "good", "异常": "critical",
+  "提交中": "info", "不处理": "muted", "冻结": "warning", "已处理": "good", "异常": "critical",
 };
-const ALL_STATUSES = ["提交中", "不处理", "冻结", "线冻结", "已处理", "异常"];
+const ALL_STATUSES = ["提交中", "不处理", "冻结", "已处理", "异常"];
 // 待处理页提供的状态按钮
-const PENDING_ACTIONS = ["提交中", "不处理", "冻结", "线冻结"];
-// 批量操作提供的结案状态
-const BATCH_ACTIONS = ["不处理", "冻结", "线冻结"];
+const PENDING_ACTIONS = ["提交中", "不处理", "冻结"];
 let pendSel = new Set();      // 待处理多选
 let pendVisible = [];         // 当前可见的待处理编号（供全选用）
 // 所有平台（按你给的两排）
@@ -405,7 +403,7 @@ function renderHistory() {
       <td>${esc(m.account)}</td>
       <td class="center nowrap">${esc(m.lastLogin) || "—"}</td>
       <td><div class="cell-wrap">${esc(m.reason) || "—"}</div></td>
-      <td><div class="cell-wrap">${esc(m.remark) || "—"}${m.note ? `<br><span class="muted">❄冻结内容：${esc(m.note)}</span>` : ""}</div></td>
+      <td><div class="cell-wrap">${esc(m.remark) || "—"}${m.note ? `<br><span class="freeze-note">❄冻结内容：${esc(m.note)}</span>` : ""}</div></td>
       <td>${pill(m.status)}</td>
       <td class="center nowrap">${fmtTime(m.updatedAt)}</td>
       <td><button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button></td>

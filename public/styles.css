@@ -285,6 +285,7 @@ a  { color: inherit; text-decoration: none; }
 .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .pill-good     { color: var(--good);     background: color-mix(in srgb, var(--good) 12%, transparent); }
 .pill-warning  { color: var(--warning);  background: color-mix(in srgb, var(--warning) 14%, transparent); }
+.freeze-note { color: var(--warning); }
 .pill-critical { color: var(--critical); background: color-mix(in srgb, var(--critical) 12%, transparent); }
 .pill-info     { color: var(--series-1); background: var(--series-1-soft); }
 .pill-muted    { color: var(--muted);    background: color-mix(in srgb, var(--muted) 14%, transparent); }
