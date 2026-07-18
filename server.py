@@ -241,8 +241,7 @@ def read_token(token):
 
 def _pub_config(cfg):
     return {"maxMembers": int(cfg.get("maxMembers", 0) or 0),
-            "groups": cfg.get("groups", []),
-            "announcement": cfg.get("announcement", "")}
+            "groups": cfg.get("groups", [])}
 
 
 def get_config():
@@ -390,6 +389,14 @@ class Handler(SimpleHTTPRequestHandler):
             return self._batch_delete(body)
         if path == "/api/members/group-batch":
             return self._batch_group(body)
+        if path == "/api/announcements":
+            return self._add_announcement(user, body)
+        m = re.match(r"^/api/announcements/([^/]+)/delete$", path)
+        if m:
+            return self._delete_announcement(user, m.group(1))
+        m = re.match(r"^/api/announcements/([^/]+)$", path)
+        if m:
+            return self._edit_announcement(user, m.group(1), body)
         m = re.match(r"^/api/members/([^/]+)/status$", path)
         if m:
             return self._set_status(m.group(1), body)
@@ -525,8 +532,6 @@ class Handler(SimpleHTTPRequestHandler):
                     seen.add(g)
                     groups.append(g)
             patch["groups"] = groups
-        if "announcement" in body:
-            patch["announcement"] = str(body.get("announcement") or "")
         cfg = set_config(patch)
         data = load_data() or {"members": [], "seq": 1000}
         enforce_cap(data)
@@ -544,6 +549,7 @@ class Handler(SimpleHTTPRequestHandler):
                                     "today": today_str(),
                                     "statuses": STATUSES,
                                     "config": get_config(),
+                                    "announcements": data.get("announcements") or [],
                                     "user": public_user(user)})
         if p == "/api/users":
             if user["role"] != "admin":
@@ -631,6 +637,44 @@ class Handler(SimpleHTTPRequestHandler):
         data["members"] = [m for m in data["members"] if m["id"] not in idset]
         save_data(data)
         return self._send_json({"deleted": before - len(data["members"])})
+
+    # -------- 公告（任何登录用户）--------
+    def _add_announcement(self, user, body):
+        text = (body.get("text") or "").strip()
+        if not text:
+            return self._send_json({"error": "内容不能为空"}, 400)
+        data = load_data() or {"members": [], "seq": 1000}
+        data["annSeq"] = data.get("annSeq", 0) + 1
+        ann = {"id": "N%d" % data["annSeq"], "text": text,
+               "createdAt": now_iso(), "author": user.get("nickname") or user["username"]}
+        anns = data.get("announcements") or []
+        anns.insert(0, ann)
+        data["announcements"] = anns
+        save_data(data)
+        return self._send_json(ann, 201)
+
+    def _edit_announcement(self, user, aid, body):
+        text = (body.get("text") or "").strip()
+        if not text:
+            return self._send_json({"error": "内容不能为空"}, 400)
+        data = load_data() or {"members": [], "seq": 1000}
+        for a in data.get("announcements") or []:
+            if a["id"] == aid:
+                a["text"] = text
+                a["updatedAt"] = now_iso()
+                save_data(data)
+                return self._send_json(a)
+        return self._send_json({"error": "公告不存在"}, 404)
+
+    def _delete_announcement(self, user, aid):
+        data = load_data() or {"members": [], "seq": 1000}
+        anns = data.get("announcements") or []
+        new = [a for a in anns if a["id"] != aid]
+        if len(new) == len(anns):
+            return self._send_json({"error": "公告不存在"}, 404)
+        data["announcements"] = new
+        save_data(data)
+        return self._send_json({"ok": True})
 
     def _delete_member(self, mid):
         data = load_data() or {"members": [], "seq": 1000}

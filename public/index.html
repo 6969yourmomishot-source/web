@@ -21,7 +21,7 @@
         <a class="nav-item"           data-view="pending"  href="#pending"><span class="ni-ico">◷</span>待处理</a>
         <a class="nav-item"           data-view="new"      href="#new"><span class="ni-ico">＋</span>新增</a>
         <a class="nav-item"           data-view="history"  href="#history"><span class="ni-ico">▦</span>历史纪录</a>
-        <a class="nav-item admin-only" data-view="announce" href="#announce"><span class="ni-ico">📢</span>公告编辑</a>
+        <a class="nav-item" data-view="announce" href="#announce"><span class="ni-ico">📢</span>公告</a>
         <a class="nav-item admin-only" data-view="accounts" href="#accounts"><span class="ni-ico">◫</span>账号管理</a>
         <a class="nav-item admin-only" data-view="settings" href="#settings"><span class="ni-ico">⚙</span>设置</a>
       </nav>
@@ -226,12 +226,16 @@
           </section>
         </div>
 
-        <!-- ========== 公告编辑（管理员）========== -->
+        <!-- ========== 公告（所有人）========== -->
         <div class="view" data-view="announce" hidden>
           <section class="card form-card">
-            <div class="card-head"><div><h2>公告编辑</h2><p class="muted tiny">显示在总览顶部，所有人可见；留空则不显示</p></div></div>
-            <textarea id="announceInput" class="bulk-input" rows="8" placeholder="输入公告内容…"></textarea>
-            <div class="form-actions"><button class="btn-primary" id="saveAnnounceBtn">保存公告</button></div>
+            <div class="card-head"><div><h2>发布公告</h2><p class="muted tiny">所有人可发布，显示在总览顶部</p></div></div>
+            <textarea id="announceInput" class="bulk-input" rows="4" placeholder="输入公告内容…"></textarea>
+            <div class="form-actions"><button class="btn-primary" id="postAnnounceBtn">发布</button></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><div><h2>已发布公告</h2><p class="muted tiny" id="annCount">—</p></div></div>
+            <div id="annList" class="ann-list"></div>
           </section>
         </div>
 

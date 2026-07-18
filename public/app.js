@@ -31,7 +31,7 @@ function buildPlatSeg(id, active) {
     `<div class="plat-line">${PLAT_ROWS[1].map(btn).join("")}</div>`;
 }
 
-let state = { members: [], today: "", statuses: ALL_STATUSES, user: null, config: { maxMembers: 0, groups: [] } };
+let state = { members: [], today: "", statuses: ALL_STATUSES, user: null, config: { maxMembers: 0, groups: [] }, announcements: [] };
 let pendGroup = "全部";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -77,6 +77,7 @@ async function loadMembers() {
     state.today = d.today || "";
     state.statuses = d.statuses || ALL_STATUSES;
     if (d.config) state.config = d.config;
+    state.announcements = d.announcements || [];
     if (d.user) { state.user = d.user; applyUserUI(); }
     populateGroups();
     stampUpdated();
@@ -210,12 +211,21 @@ function scopeLabelOf(st) {
 const scopeLabel = () => scopeLabelOf(histState);
 
 // ---------- 渲染：总览 ----------
+function annItemHtml(a, withActions) {
+  return `<div class="ann-item"${withActions ? ` data-annid="${esc(a.id)}"` : ""}>
+      <div class="ann-meta muted tiny">${fmtTime(a.createdAt)} · ${esc(a.author) || "—"}</div>
+      <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
+      ${withActions ? `<div class="ann-actions">
+        <button class="btn-ghost btn-xs" data-annedit="${esc(a.id)}">编辑</button>
+        <button class="btn-del btn-xs" data-anndel="${esc(a.id)}">删除</button></div>` : ""}
+    </div>`;
+}
 function renderOverview() {
-  const ann = (state.config.announcement || "").trim();
+  const anns = state.announcements || [];
   const board = $("#announceBoard");
   if (board) {
-    board.hidden = !ann;
-    if (ann) $("#announceContent").innerHTML = esc(ann).replace(/\n/g, "<br>");
+    board.hidden = !anns.length;
+    $("#announceContent").innerHTML = anns.map((a) => annItemHtml(a, false)).join("");
   }
   const inPlat = state.members.filter((m) =>
     platMatch(m, ovPlat) &&
@@ -371,8 +381,11 @@ function renderCurrent() {
   // new 视图是表单，无需渲染
 }
 function renderAnnounce() {
-  if (!state.user || state.user.role !== "admin") { showView("overview"); return; }
-  $("#announceInput").value = state.config.announcement || "";
+  const anns = state.announcements || [];
+  $("#annCount").textContent = `共 ${anns.length} 条`;
+  $("#annList").innerHTML = anns.length
+    ? anns.map((a) => annItemHtml(a, true)).join("")
+    : `<p class="muted tiny" style="padding:12px">还没有公告</p>`;
 }
 
 // ---------- 渲染：账号管理 ----------
@@ -501,16 +514,35 @@ $("#logoutBtn").addEventListener("click", async () => {
   try { await api("/api/logout", { method: "POST" }); } catch (e) {}
   location.href = "/login";
 });
-// 保存公告（管理员）
-$("#saveAnnounceBtn").addEventListener("click", async () => {
+// 公告：发布
+$("#postAnnounceBtn").addEventListener("click", async () => {
+  const text = $("#announceInput").value.trim();
+  if (!text) { toast("内容不能为空"); return; }
   try {
-    const d = await api("/api/config", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ announcement: $("#announceInput").value }),
-    });
-    state.config = d.config || state.config;
-    toast("公告已保存");
-  } catch (e) { toast("保存失败：" + e.message); }
+    await api("/api/announcements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    $("#announceInput").value = "";
+    await loadMembers(); renderCurrent(); toast("已发布");
+  } catch (e) { toast("发布失败：" + e.message); }
+});
+// 公告：编辑 / 删除
+$("#annList").addEventListener("click", async (e) => {
+  const del = e.target.closest("[data-anndel]");
+  if (del) {
+    if (!window.confirm("确定删除这条公告？")) return;
+    try { await api(`/api/announcements/${encodeURIComponent(del.dataset.anndel)}/delete`, { method: "POST" }); await loadMembers(); renderCurrent(); toast("已删除"); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  const ed = e.target.closest("[data-annedit]");
+  if (ed) {
+    const id = ed.dataset.annedit;
+    const cur = (state.announcements || []).find((a) => a.id === id);
+    const text = window.prompt("编辑公告：", cur ? cur.text : "");
+    if (text == null) return;
+    if (!text.trim()) { toast("内容不能为空"); return; }
+    try { await api(`/api/announcements/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }); await loadMembers(); renderCurrent(); toast("已更新"); }
+    catch (err) { toast(err.message); }
+  }
 });
 
 // 自行修改密码（任何登录用户）
