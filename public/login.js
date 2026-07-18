@@ -1,4 +1,3 @@
-// deploy-check-SZ-2
 const $ = (s) => document.querySelector(s);
 let setupMode = false;
 
