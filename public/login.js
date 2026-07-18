@@ -1,3 +1,4 @@
+// dc-both-check
 const $ = (s) => document.querySelector(s);
 let setupMode = false;
 
