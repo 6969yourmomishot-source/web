@@ -591,6 +591,8 @@ class Handler(SimpleHTTPRequestHandler):
         for m in data["members"]:
             if m["id"] == mid:
                 m["status"] = status
+                if "note" in body:
+                    m["note"] = (body.get("note") or "").strip()
                 m["updatedAt"] = now_iso()
                 save_data(data)
                 return self._send_json(m)
@@ -600,7 +602,7 @@ class Handler(SimpleHTTPRequestHandler):
         data = load_data() or {"members": [], "seq": 1000}
         for m in data["members"]:
             if m["id"] == mid:
-                for k in ("platform", "lastLogin", "reason", "remark", "group"):
+                for k in ("platform", "lastLogin", "reason", "remark", "group", "note"):
                     if k in body:
                         m[k] = (body.get(k) or "").strip()
                 if "account" in body:

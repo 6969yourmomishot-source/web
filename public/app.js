@@ -34,6 +34,7 @@ function buildPlatSeg(id, active) {
 let state = { members: [], today: "", statuses: ALL_STATUSES, user: null, config: { maxMembers: 0, groups: [] }, announcements: [] };
 let pendGroup = "全部";
 let editingMemberId = null;   // 待处理内联编辑中的会员
+let freezingMemberId = null;  // 待处理正在填冻结内容的会员
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtTime = (iso) => iso ? `${iso.slice(5, 10)} ${iso.slice(11, 16)}` : "—";
@@ -114,11 +115,13 @@ function stampUpdated() {
   const p = (n) => String(n).padStart(2, "0");
   el.textContent = `更新于 ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
-async function setStatus(id, status) {
+async function setStatus(id, status, note) {
   try {
+    const body = { status };
+    if (note !== undefined) body.note = note;
     await api(`/api/members/${encodeURIComponent(id)}/status`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     });
     await loadMembers();
     renderCurrent();
@@ -304,7 +307,10 @@ function renderPending() {
     updateBatchBar(); return;
   }
   const line = (label, val) => val ? `<div class="rec-sub muted">${label}：${esc(val)}</div>` : "";
-  box.innerHTML = rows.map((m) => m.id === editingMemberId ? memberEditHtml(m) : `
+  box.innerHTML = rows.map((m) =>
+    m.id === editingMemberId ? memberEditHtml(m)
+    : m.id === freezingMemberId ? memberFreezeHtml(m)
+    : `
     <div class="rec ${pendSel.has(m.id) ? "is-sel" : ""}">
       <input type="checkbox" class="rec-check" data-check="${esc(m.id)}" ${pendSel.has(m.id) ? "checked" : ""} aria-label="选择">
       <div class="rec-main">
@@ -312,6 +318,7 @@ function renderPending() {
         ${line("最后登入", m.lastLogin)}
         ${line("原因", m.reason)}
         ${line("备注", m.remark)}
+        ${line("冻结内容", m.note)}
         <div class="rec-meta muted tiny">${esc(m.id)} · 更新 ${fmtTime(m.updatedAt)}</div>
       </div>
       <div class="rec-actions">
@@ -336,9 +343,22 @@ function memberEditHtml(m) {
       </div>
       <label class="ef">原因<textarea class="ann-edit-input" data-f="reason" rows="2">${esc(m.reason)}</textarea></label>
       <label class="ef">备注<textarea class="ann-edit-input" data-f="remark" rows="2">${esc(m.remark)}</textarea></label>
+      <label class="ef">冻结内容<textarea class="ann-edit-input" data-f="note" rows="2">${esc(m.note || "")}</textarea></label>
       <div class="ann-actions">
         <button class="btn-primary btn-xs" data-medsave="${esc(m.id)}">保存</button>
         <button class="btn-ghost btn-xs" data-medcancel="1">取消</button>
+      </div>
+    </div>
+  </div>`;
+}
+function memberFreezeHtml(m) {
+  return `<div class="rec rec-editing">
+    <div class="rec-edit">
+      <div class="rec-title">${esc(m.account)} <span class="muted">· ${esc(m.platform) || "无平台"}</span> · <span style="color:var(--warning)">冻结</span></div>
+      <label class="ef">冻结内容<textarea class="ann-edit-input" id="freezeNoteInput" rows="3" placeholder="输入冻结内容…">${esc(m.note || "")}</textarea></label>
+      <div class="ann-actions">
+        <button class="btn-primary btn-xs" data-freezeok="${esc(m.id)}">确认冻结</button>
+        <button class="btn-ghost btn-xs" data-freezecancel="1">取消</button>
       </div>
     </div>
   </div>`;
@@ -385,7 +405,7 @@ function renderHistory() {
       <td>${esc(m.account)}</td>
       <td class="center nowrap">${esc(m.lastLogin) || "—"}</td>
       <td><div class="cell-wrap">${esc(m.reason) || "—"}</div></td>
-      <td><div class="cell-wrap">${esc(m.remark) || "—"}</div></td>
+      <td><div class="cell-wrap">${esc(m.remark) || "—"}${m.note ? `<br><span class="muted">❄冻结内容：${esc(m.note)}</span>` : ""}</div></td>
       <td>${pill(m.status)}</td>
       <td class="center nowrap">${fmtTime(m.updatedAt)}</td>
       <td><button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button></td>
@@ -487,7 +507,15 @@ document.addEventListener("click", (e) => {
   const goto = e.target.closest("[data-goto]");
   if (goto) { showView(goto.dataset.goto); return; }
   const chip = e.target.closest(".chip[data-status]");
-  if (chip && !chip.classList.contains("is-active")) { setStatus(chip.dataset.id, chip.dataset.status); return; }
+  if (chip && !chip.classList.contains("is-active")) {
+    if (currentView === "pending" && chip.dataset.status === "冻结") {
+      freezingMemberId = chip.dataset.id; editingMemberId = null;
+      renderPending();
+      const ta = $("#freezeNoteInput"); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      return;
+    }
+    setStatus(chip.dataset.id, chip.dataset.status); return;
+  }
   const del = e.target.closest(".btn-del[data-del]");
   if (del) deleteMember(del.dataset.del, del.dataset.name);
 });
@@ -521,6 +549,16 @@ $("#pendingList").addEventListener("click", async (e) => {
   }
   const cancel = e.target.closest("[data-medcancel]");
   if (cancel) { editingMemberId = null; renderPending(); return; }
+  const fok = e.target.closest("[data-freezeok]");
+  if (fok) {
+    const id = fok.dataset.freezeok;
+    const note = ($("#freezeNoteInput").value || "").trim();
+    freezingMemberId = null;
+    await setStatus(id, "冻结", note);
+    return;
+  }
+  const fcancel = e.target.closest("[data-freezecancel]");
+  if (fcancel) { freezingMemberId = null; renderPending(); return; }
   const save = e.target.closest("[data-medsave]");
   if (save) {
     const id = save.dataset.medsave;
