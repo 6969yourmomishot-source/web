@@ -623,11 +623,14 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(ids, list) or not ids:
             return self._send_json({"error": "未选择会员"}, 400)
         idset = set(ids)
+        note = body.get("note")
         data = load_data() or {"members": [], "seq": 1000}
         n = 0
         for m in data["members"]:
             if m["id"] in idset:
                 m["status"] = status
+                if note is not None:
+                    m["note"] = str(note).strip()
                 m["updatedAt"] = now_iso()
                 n += 1
         save_data(data)

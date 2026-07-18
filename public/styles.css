@@ -245,6 +245,12 @@ a  { color: inherit; text-decoration: none; }
 .ef-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .ef { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--text-2); }
 .ef .ann-edit-input { min-height: 56px; }
+
+/* 批量冻结输入 */
+.batch-freeze { margin: -4px 0 12px; padding: 12px; background: var(--surface-2); border: 1px solid var(--warning); border-radius: var(--radius-sm); }
+/* 历史改状态下拉 */
+.status-sel { padding: 4px 6px; font-size: .78rem; border-radius: 6px; background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); font-family: inherit; cursor: pointer; margin-right: 4px; }
+.status-sel:focus { outline: none; border-color: var(--series-1); }
 @media (max-width: 640px) { .ef-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .last-updated { display: none; } }
 

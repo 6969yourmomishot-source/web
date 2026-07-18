@@ -368,13 +368,15 @@ function updateBatchBar() {
   if (all) all.checked = pendVisible.length > 0 && pendVisible.every((id) => pendSel.has(id));
   const bar = $("#batchBar"); if (bar) bar.classList.toggle("has-sel", n > 0);
 }
-async function batchSetStatus(status) {
+async function batchSetStatus(status, note) {
   const ids = [...pendSel];
   if (!ids.length) { toast("请先勾选会员"); return; }
   try {
+    const body = { ids, status };
+    if (note !== undefined) body.note = note;
     const r = await api("/api/members/status-batch", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids, status }),
+      body: JSON.stringify(body),
     });
     pendSel.clear();
     await loadMembers();
@@ -406,7 +408,10 @@ function renderHistory() {
       <td><div class="cell-wrap">${esc(m.remark) || "—"}${m.note ? `<br><span class="freeze-note">❄冻结内容：${esc(m.note)}</span>` : ""}</div></td>
       <td>${pill(m.status)}</td>
       <td class="center nowrap">${fmtTime(m.updatedAt)}</td>
-      <td><button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button></td>
+      <td class="nowrap">
+        <select class="status-sel" data-sid="${esc(m.id)}"><option value="">改状态…</option>${PENDING_ACTIONS.map((s) => `<option value="${s}">${s}</option>`).join("")}</select>
+        <button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button>
+      </td>
     </tr>`).join("") : `<tr><td colspan="10" class="empty-row muted">没有匹配的记录</td></tr>`;
   updateHistBatchBar();
 }
@@ -588,19 +593,40 @@ $("#pendAll").addEventListener("change", (e) => {
 // 批量设为状态
 $("#batchActions").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-batch]"); if (!b) return;
+  if (b.dataset.batch === "冻结") {
+    if (!pendSel.size) { toast("请先勾选会员"); return; }
+    $("#batchFreeze").hidden = false;
+    $("#batchFreezeNote").focus();
+    return;
+  }
   batchSetStatus(b.dataset.batch);
+});
+$("#batchFreezeCancel").addEventListener("click", () => { $("#batchFreeze").hidden = true; });
+$("#batchFreezeOk").addEventListener("click", async () => {
+  const note = $("#batchFreezeNote").value.trim();
+  $("#batchFreeze").hidden = true;
+  await batchSetStatus("冻结", note);
+  $("#batchFreezeNote").value = "";
 });
 // 待处理：批量删除
 $("#pendBatchDel").addEventListener("click", () => batchDeleteIds([...pendSel], () => pendSel.clear()));
 
 // 历史：多选勾选
-$("#historyBody").addEventListener("change", (e) => {
+$("#historyBody").addEventListener("change", async (e) => {
   const cb = e.target.closest(".hist-check[data-hcheck]");
-  if (!cb) return;
-  const id = cb.dataset.hcheck;
-  if (cb.checked) histSel.add(id); else histSel.delete(id);
-  const tr = cb.closest("tr"); if (tr) tr.classList.toggle("row-sel", cb.checked);
-  updateHistBatchBar();
+  if (cb) {
+    const id = cb.dataset.hcheck;
+    if (cb.checked) histSel.add(id); else histSel.delete(id);
+    const tr = cb.closest("tr"); if (tr) tr.classList.toggle("row-sel", cb.checked);
+    updateHistBatchBar();
+    return;
+  }
+  const sel = e.target.closest(".status-sel[data-sid]");
+  if (sel && sel.value) {
+    const id = sel.dataset.sid, status = sel.value;
+    sel.value = "";
+    await setStatus(id, status);
+  }
 });
 $("#histAll").addEventListener("change", (e) => {
   if (e.target.checked) histVisible.forEach((id) => histSel.add(id));

@@ -118,6 +118,13 @@
               <button class="btn-ghost" id="batchGroupBtn">套用</button>
               <button class="btn-del batch-del" id="pendBatchDel">🗑 删除所选</button>
             </div>
+            <div class="batch-freeze" id="batchFreeze" hidden>
+              <label class="ef">冻结内容（套用到勾选的会员）<textarea class="ann-edit-input" id="batchFreezeNote" rows="3" placeholder="输入冻结内容…"></textarea></label>
+              <div class="ann-actions">
+                <button class="btn-primary btn-xs" id="batchFreezeOk">确认冻结</button>
+                <button class="btn-ghost btn-xs" id="batchFreezeCancel">取消</button>
+              </div>
+            </div>
             <div id="pendingList"></div>
           </section>
         </div>
