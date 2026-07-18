@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+
+# 环境变量（如果以后有密钥，放这里，别提交）
+.env
+.env.local
+
+# 运行时数据（会员数据，不进版本库）
+members.json
+data/

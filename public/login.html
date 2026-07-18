@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录 · 会员追踪</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #0d0d0d; color: #fff;
+      display: grid; place-items: center; min-height: 100vh; padding: 20px;
+    }
+    .card {
+      width: 100%; max-width: 360px;
+      background: #1a1a19; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px; padding: 32px 28px;
+      display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    }
+    .brand { font-size: 1.05rem; font-weight: 700; color: #3987e5; }
+    h1 { margin: 4px 0 0; font-size: 1.5rem; letter-spacing: -.02em; }
+    .hint { margin: 0 0 6px; color: #c3c2b7; font-size: .88rem; }
+    input {
+      width: 100%; background: #232321; color: #fff;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 10px;
+      padding: 12px 14px; font-size: .95rem; font-family: inherit;
+    }
+    input:focus { outline: none; border-color: #3987e5; box-shadow: 0 0 0 3px rgba(57,135,229,.25); }
+    button {
+      margin-top: 4px; border: none; cursor: pointer;
+      background: #3987e5; color: #fff; font-size: .98rem; font-weight: 600;
+      padding: 12px; border-radius: 10px; transition: opacity .15s;
+    }
+    button:hover { opacity: .9; }
+    .err { color: #e05c5c; font-size: .85rem; min-height: 1.1em; }
+    .foot { text-align: center; color: #898781; font-size: .78rem; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <form class="card" id="form" autocomplete="on">
+    <div class="brand">👥 会员追踪</div>
+    <h1 id="title">登录</h1>
+    <p class="hint" id="hint">请输入账号与密码</p>
+    <input id="username" name="username" placeholder="账号" autocomplete="username" />
+    <input id="password" name="password" type="password" placeholder="密码" autocomplete="current-password" />
+    <div class="err" id="err"></div>
+    <button id="submit" type="submit">登录</button>
+    <div class="foot">会员追踪 · 需登录才能使用</div>
+  </form>
+  <script src="/login.js"></script>
+</body>
+</html>

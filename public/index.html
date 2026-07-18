@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>会员追踪</title>
+  <meta name="description" content="会员追踪 · 提交状态管理" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ===== 侧边栏 ===== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">👥</span>
+        <span class="brand-name">会员追踪</span>
+      </div>
+      <nav class="nav" id="nav">
+        <a class="nav-item is-active" data-view="overview" href="#overview"><span class="ni-ico">▤</span>总览</a>
+        <a class="nav-item"           data-view="pending"  href="#pending"><span class="ni-ico">◷</span>待处理</a>
+        <a class="nav-item"           data-view="new"      href="#new"><span class="ni-ico">＋</span>新增</a>
+        <a class="nav-item"           data-view="history"  href="#history"><span class="ni-ico">▦</span>历史纪录</a>
+        <a class="nav-item admin-only" data-view="accounts" href="#accounts"><span class="ni-ico">◫</span>账号管理</a>
+        <a class="nav-item admin-only" data-view="settings" href="#settings"><span class="ni-ico">⚙</span>设置</a>
+      </nav>
+      <div class="sidebar-foot">
+        <p class="muted tiny">会员提交状态追踪<br />部署于 Railway · GitHub 备份</p>
+      </div>
+    </aside>
+
+    <!-- ===== 主区域 ===== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="pageTitle">总览</h1>
+          <p class="muted" id="pageSub">会员提交状态一览</p>
+        </div>
+        <div class="topbar-actions">
+          <span id="lastUpdated" class="last-updated muted tiny">—</span>
+          <span id="countdown" class="last-updated muted tiny">10:00 后刷新</span>
+          <button id="refreshBtn" class="icon-btn" title="立即刷新" aria-label="立即刷新">⟳</button>
+          <button id="themeToggle" class="icon-btn" title="切换深/浅色" aria-label="切换深浅色">◐</button>
+          <span id="userInfo" class="user-info"></span>
+          <button id="changePwBtn" class="btn-ghost" title="修改自己的密码">改密码</button>
+          <button id="logoutBtn" class="btn-ghost" title="退出登录">退出</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- ========== 总览 ========== -->
+        <div class="view" data-view="overview">
+          <div class="filter-bar">
+            <div class="filter-row">
+              <span class="filter-label">平台</span>
+              <div class="seg-sm plat-seg" id="ovPlatSeg"></div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">日期</span>
+              <div class="seg-sm" id="ovDateSeg">
+                <button data-scope="today">今日</button>
+                <button data-scope="month">本月</button>
+                <button data-scope="year">本年</button>
+                <button data-scope="all" class="is-active">全部</button>
+                <button data-scope="custom">自订</button>
+              </div>
+              <select id="ovYear" class="mini-select" hidden></select>
+              <select id="ovMonth" class="mini-select" hidden></select>
+            </div>
+          </div>
+          <section class="kpi-row" id="ovStats" aria-label="会员统计"></section>
+          <section class="card">
+            <div class="card-head"><div><h2>最近新增与变动</h2><p class="muted tiny">最近 10 笔（含新增与状态变更）</p></div>
+              <button class="btn-ghost" data-goto="pending">待处理 →</button></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr>
+              <th>编号</th><th>平台</th><th>会员</th><th>原因</th><th>备注</th><th>状态</th><th class="center">更新时间</th>
+            </tr></thead><tbody id="ovPendingBody"></tbody></table></div>
+          </section>
+        </div>
+
+        <!-- ========== 待处理 ========== -->
+        <div class="view" data-view="pending" hidden>
+          <section class="card">
+            <div class="card-head">
+              <div><h2>待处理会员</h2><p class="muted tiny" id="pendingCount">—</p></div>
+              <div class="head-actions">
+                <label class="search">
+                  <span class="search-ico">⌕</span>
+                  <input type="text" id="pendingSearch" placeholder="按平台/会员/原因筛选…" aria-label="筛选待处理" />
+                </label>
+                <button class="btn-ghost" data-goto="new">＋ 新增</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-row">
+                <span class="filter-label">平台</span>
+                <div class="seg-sm plat-seg" id="pendPlatSeg"></div>
+              </div>
+              <div class="filter-row">
+                <span class="filter-label">群组</span>
+                <div class="seg-sm" id="pendGroupSeg"></div>
+              </div>
+            </div>
+            <div class="batch-bar" id="batchBar">
+              <label class="batch-all"><input type="checkbox" id="pendAll"> 全选</label>
+              <span class="muted tiny" id="batchCount">已选 0 项</span>
+              <span class="batch-sep muted tiny">批量设为</span>
+              <div class="batch-actions" id="batchActions">
+                <button class="chip chip-muted" data-batch="不处理">不处理</button>
+                <button class="chip chip-warning" data-batch="冻结">冻结</button>
+                <button class="chip chip-violet" data-batch="线冻结">线冻结</button>
+              </div>
+              <select id="batchGroupSel" class="mini-select" title="批量设群组"><option value="">设组别…</option></select>
+              <button class="btn-ghost" id="batchGroupBtn">套用</button>
+              <button class="btn-del batch-del" id="pendBatchDel">🗑 删除所选</button>
+            </div>
+            <div id="pendingList"></div>
+          </section>
+        </div>
+
+        <!-- ========== 新增（单笔 / 批量）========== -->
+        <div class="view" data-view="new" hidden>
+          <div class="subtabs" id="newTabs">
+            <button class="subtab is-active" data-tab="single">单笔新增</button>
+            <button class="subtab" data-tab="bulk">批量粘贴</button>
+          </div>
+
+          <section class="card form-card tab-pane" data-tab="single">
+            <div class="card-head"><div><h2>单笔新增会员</h2><p class="muted tiny">填写后进入「待处理」</p></div></div>
+            <form id="newForm" class="form">
+              <label class="field"><span class="field-label">平台</span>
+                <input type="text" name="platform" placeholder="例：XO" /></label>
+              <label class="field"><span class="field-label">会员 <em>*</em></span>
+                <input type="text" name="account" placeholder="会员账号" required /></label>
+              <label class="field"><span class="field-label">最后登入时间</span>
+                <input type="text" name="lastLogin" placeholder="例：2026-07-15 17:13:01" /></label>
+              <label class="field"><span class="field-label">原因</span>
+                <textarea name="reason" rows="2" placeholder="例：与JD zjl7229 同IP*2、同彩种"></textarea></label>
+              <label class="field"><span class="field-label">备注</span>
+                <textarea name="remark" rows="2" placeholder="例：26/7/16(M)疑似刷子团队 市场指示冻结处理"></textarea></label>
+              <label class="field"><span class="field-label">群组</span>
+                <select name="group" id="newGroupSel" class="mini-select"><option value="">（无）</option></select></label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">新增</button>
+                <button type="reset" class="btn-ghost">清空</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card bulk-card tab-pane" data-tab="bulk" hidden>
+            <div class="card-head"><div><h2>批量新增会员</h2>
+              <p class="muted tiny">把会员资料按格式粘贴，多笔用空行或一行「------」分隔，可一次提交很多笔。</p></div></div>
+            <details class="fmt-hint">
+              <summary>查看格式范例</summary>
+<pre>平台：XO
+会员：aijd199028
+最后登入时间：2026-07-15 17:13:01
+原因：与JD zjl7229 同IP*2、同彩种
+备注：26/7/16(M)疑似刷子团队 市场指示冻结处理 抓鬼
+--------------------
+平台：OL
+会员：xy19860415
+最后登入时间：2026/07/13 05:38:53
+原因：与JD zjl7229 同IP*2
+备注：26/7/16(M)疑似刷子团队 市场指示冻结处理 抓鬼</pre>
+            </details>
+            <textarea id="bulkInput" class="bulk-input" rows="16" placeholder="在此粘贴会员资料…"></textarea>
+            <div class="bulk-bar">
+              <span class="muted" id="bulkCount">已识别 0 笔</span>
+              <div class="bulk-actions">
+                <button class="btn-ghost" id="bulkClear">清空</button>
+                <button class="btn-primary" id="bulkSubmit">新增</button>
+              </div>
+            </div>
+            <div id="bulkPreview" class="bulk-preview"></div>
+          </section>
+        </div>
+
+        <!-- ========== 历史纪录 ========== -->
+        <div class="view" data-view="history" hidden>
+          <section class="card">
+            <div class="card-head">
+              <div><h2>历史纪录</h2><p class="muted tiny" id="historyCount">提交过的所有会员</p></div>
+              <label class="search">
+                <span class="search-ico">⌕</span>
+                <input type="text" id="historySearch" placeholder="按平台/会员/原因筛选…" aria-label="筛选" />
+              </label>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-row">
+                <span class="filter-label">日期</span>
+                <div class="seg-sm" id="histDateSeg">
+                  <button data-scope="today" class="is-active">今日</button>
+                  <button data-scope="month">本月</button>
+                  <button data-scope="year">本年</button>
+                  <button data-scope="all">全部</button>
+                  <button data-scope="custom">自订</button>
+                </div>
+                <select id="histYear" class="mini-select" hidden></select>
+                <select id="histMonth" class="mini-select" hidden></select>
+              </div>
+              <div class="filter-row">
+                <span class="filter-label">状态</span>
+                <div class="seg-sm" id="histStatusSeg">
+                  <button data-st="全部" class="is-active">全部</button>
+                  <button data-st="提交中">提交中</button>
+                  <button data-st="不处理">不处理</button>
+                  <button data-st="冻结">冻结</button>
+                  <button data-st="线冻结">线冻结</button>
+                </div>
+              </div>
+            </div>
+            <div class="batch-bar" id="histBatchBar">
+              <label class="batch-all"><input type="checkbox" id="histAll"> 全选</label>
+              <span class="muted tiny" id="histBatchCount">已选 0 项</span>
+              <button class="btn-del batch-del" id="histBatchDel" style="margin-left:auto">🗑 删除所选</button>
+            </div>
+            <div class="table-wrap"><table class="data-table"><thead><tr>
+              <th class="chk-col"></th><th>编号</th><th>平台</th><th>会员</th><th class="center">最后登入时间</th><th>原因</th><th>备注</th><th>状态</th><th class="center">更新时间</th><th>操作</th>
+            </tr></thead><tbody id="historyBody"></tbody></table></div>
+          </section>
+        </div>
+
+        <!-- ========== 账号管理（管理员）========== -->
+        <div class="view" data-view="accounts" hidden>
+          <section class="card form-card">
+            <div class="card-head"><div><h2>新增账号</h2><p class="muted tiny">管理员可开设账号</p></div></div>
+            <form id="userForm" class="form">
+              <label class="field"><span class="field-label">用户名 <em>*</em></span>
+                <input type="text" name="username" placeholder="登录用账号" autocomplete="off" /></label>
+              <label class="field"><span class="field-label">昵称</span>
+                <input type="text" name="nickname" placeholder="显示用名称（可选）" autocomplete="off" /></label>
+              <label class="field"><span class="field-label">密码 <em>*</em></span>
+                <input type="text" name="password" placeholder="至少 4 位" autocomplete="off" /></label>
+              <label class="field"><span class="field-label">角色</span>
+                <select name="role" class="mini-select">
+                  <option value="staff">一般人员</option>
+                  <option value="admin">管理员</option>
+                </select></label>
+              <div class="form-actions"><button type="submit" class="btn-primary">新增账号</button></div>
+            </form>
+          </section>
+          <section class="card">
+            <div class="card-head"><div><h2>所有账号</h2><p class="muted tiny" id="usersCount">—</p></div></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr>
+              <th>用户名</th><th>昵称</th><th>角色</th><th>操作</th>
+            </tr></thead><tbody id="usersBody"></tbody></table></div>
+          </section>
+        </div>
+
+        <!-- ========== 设置（管理员）========== -->
+        <div class="view" data-view="settings" hidden>
+          <section class="card form-card">
+            <div class="card-head"><div><h2>待处理群组</h2><p class="muted tiny">自定义群组名称，用于待处理分组</p></div></div>
+            <div class="group-editor">
+              <div id="groupList" class="group-list"></div>
+              <div class="group-add">
+                <input type="text" id="groupInput" placeholder="输入群组名称…" class="mini-input" />
+                <button class="btn-ghost" id="groupAddBtn">＋ 添加</button>
+              </div>
+            </div>
+          </section>
+          <section class="card form-card">
+            <div class="card-head"><div><h2>自动删除笔数</h2><p class="muted tiny">超过此笔数自动删除最旧的；0 = 不限制</p></div></div>
+            <div class="field">
+              <input type="number" id="maxMembersInput" min="0" step="100" placeholder="例：5000" class="mini-input" />
+            </div>
+            <div class="form-actions"><button class="btn-primary" id="saveConfigBtn">保存设置</button></div>
+          </section>
+        </div>
+
+        <footer class="foot muted tiny">
+          会员追踪 · 部署于 Railway · 与 GitHub 联动自动备份
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
