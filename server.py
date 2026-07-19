@@ -49,7 +49,7 @@ SEED_DEMO = os.environ.get("SEED_DEMO", "").strip().lower() in ("1", "true", "ye
 
 # 时区：用 UTC+8（北京/上海），用于"今日"统计
 TZ = timezone(timedelta(hours=8))
-STATUSES = ["提交中", "不处理", "冻结", "已处理", "异常"]
+STATUSES = ["提交中", "不处理", "冻结", "已回复", "已处理", "异常"]
 
 _lock = threading.RLock()
 
