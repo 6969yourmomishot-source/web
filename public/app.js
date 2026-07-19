@@ -151,7 +151,7 @@ async function batchDeleteIds(ids, after) {
 }
 
 // ---------- 数据筛选 ----------
-const pendingMembers = () => state.members.filter((m) => m.status === "提交中");
+const pendingMembers = () => state.members.filter((m) => m.status === "提交中" || m.status === "已回复");
 const countStatus = (s) => state.members.filter((m) => m.status === s).length;
 // 统一的搜索匹配：平台/会员/最后登入时间/原因/备注/状态/编号
 function matchMember(m, q) {
@@ -278,9 +278,10 @@ function renderOverview() {
       <td>${esc(m.account)}</td>
       <td><div class="cell-clip" title="${esc(m.reason)}">${esc(m.reason) || "—"}</div></td>
       <td><div class="cell-clip" title="${esc(m.remark)}">${esc(m.remark) || "—"}</div></td>
+      <td><div class="cell-clip" title="${esc(m.note)}">${m.note ? `<span class="freeze-note">${esc(m.note)}</span>` : "—"}</div></td>
       <td>${pill(m.status)}</td>
       <td class="center nowrap">${fmtTime(m.updatedAt)}</td>
-    </tr>`).join("") : `<tr><td colspan="7" class="empty-row muted">暂无记录</td></tr>`;
+    </tr>`).join("") : `<tr><td colspan="8" class="empty-row muted">暂无记录</td></tr>`;
 }
 
 // ---------- 渲染：待处理 ----------
@@ -297,22 +298,27 @@ function renderPending() {
   if (q) rows = rows.filter((m) => matchMember(m, q));
   pendVisible = rows.map((m) => m.id);
   const filtered = pendPlat !== "全部" || pendGroup !== "全部" || q;
-  $("#pendingCount").textContent = `共 ${rows.length} 笔提交中${filtered ? "（已筛选）" : ""}`;
+  $("#pendingCount").textContent = `共 ${rows.length} 笔${filtered ? "（已筛选）" : ""}`;
   const box = $("#pendingList");
   if (!rows.length) {
-    const msg = filtered ? "没有匹配的记录" : "暂无提交中的会员";
+    const msg = filtered ? "没有匹配的记录" : "暂无待处理的会员";
     box.innerHTML = `<p class="empty-row muted" style="padding:32px;text-align:center">${msg}</p>`;
     updateBatchBar(); return;
   }
-  const line = (label, val) => val ? `<div class="rec-sub muted">${label}：${esc(val)}</div>` : "";
   box.innerHTML = rows.map((m) =>
     m.id === editingMemberId ? memberEditHtml(m)
     : m.id === freezingMemberId ? memberFreezeHtml(m)
-    : `
+    : memberCardHtml(m)).join("");
+  updateBatchBar();
+}
+function memberCardHtml(m) {
+  const line = (label, val) => val ? `<div class="rec-sub muted">${label}：${esc(val)}</div>` : "";
+  const toggleTo = m.status === "已回复" ? "提交中" : "已回复";   // 提交中 ↔ 已回复 切换
+  return `
     <div class="rec ${pendSel.has(m.id) ? "is-sel" : ""}">
       <input type="checkbox" class="rec-check" data-check="${esc(m.id)}" ${pendSel.has(m.id) ? "checked" : ""} aria-label="选择">
       <div class="rec-main">
-        <div class="rec-title">${esc(m.account)} <span class="muted">· ${esc(m.platform) || "无平台"}</span>${m.group ? ` <span class="group-tag">${esc(m.group)}</span>` : ""}</div>
+        <div class="rec-title">${esc(m.account)} <span class="muted">· ${esc(m.platform) || "无平台"}</span>${m.group ? ` <span class="group-tag">${esc(m.group)}</span>` : ""} ${pill(m.status)}</div>
         ${line("最后登入", m.lastLogin)}
         ${line("原因", m.reason)}
         ${line("备注", m.remark)}
@@ -322,13 +328,14 @@ function renderPending() {
       <div class="rec-actions">
         <span class="rec-label muted tiny">设为</span>
         <div class="btn-group">
-          ${PENDING_ACTIONS.map((st) => `<button class="chip chip-${STATUS_CLS[st]} ${m.status === st ? "is-active" : ""}" data-id="${esc(m.id)}" data-status="${st}">${st}</button>`).join("")}
+          <button class="chip chip-${STATUS_CLS[toggleTo]}" data-id="${esc(m.id)}" data-status="${toggleTo}">${toggleTo}</button>
+          <button class="chip chip-muted" data-id="${esc(m.id)}" data-status="不处理">不处理</button>
+          <button class="chip chip-warning" data-id="${esc(m.id)}" data-status="冻结">冻结</button>
         </div>
         <button class="btn-ghost btn-xs" data-medit="${esc(m.id)}">编辑</button>
         <button class="btn-del" data-del="${esc(m.id)}" data-name="${esc(m.account)}" title="删除">🗑</button>
       </div>
-    </div>`).join("");
-  updateBatchBar();
+    </div>`;
 }
 function memberEditHtml(m) {
   return `<div class="rec rec-editing">
