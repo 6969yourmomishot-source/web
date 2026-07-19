@@ -215,16 +215,18 @@ const scopeLabel = () => scopeLabelOf(histState);
 // ---------- 渲染：总览 ----------
 let editingAnnId = null;
 const annDate = (a) => (a.createdAt || "").slice(0, 16).replace("T", " ");
+// 置顶的排最上面（稳定排序，保持各自新→旧顺序）
+const annSorted = () => [...(state.announcements || [])].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 function annBoardHtml(a) {
-  return `<div class="ann-item">
-      <div class="ann-meta muted tiny">${annDate(a)}</div>
+  return `<div class="ann-item ${a.pinned ? "pinned" : ""}">
+      <div class="ann-meta muted tiny">${a.pinned ? "📌 " : ""}${annDate(a)}</div>
       <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
     </div>`;
 }
 function annEditorHtml(a) {
   if (a.id === editingAnnId) {
-    return `<div class="ann-item">
-      <div class="ann-meta muted tiny">${annDate(a)}</div>
+    return `<div class="ann-item ${a.pinned ? "pinned" : ""}">
+      <div class="ann-meta muted tiny">${a.pinned ? "📌 " : ""}${annDate(a)}</div>
       <textarea class="ann-edit-input" rows="5">${esc(a.text)}</textarea>
       <div class="ann-actions">
         <button class="btn-primary btn-xs" data-annsave="${esc(a.id)}">保存</button>
@@ -232,17 +234,18 @@ function annEditorHtml(a) {
       </div>
     </div>`;
   }
-  return `<div class="ann-item">
-      <div class="ann-meta muted tiny">${annDate(a)}</div>
+  return `<div class="ann-item ${a.pinned ? "pinned" : ""}">
+      <div class="ann-meta muted tiny">${a.pinned ? "📌 " : ""}${annDate(a)}</div>
       <div class="ann-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
       <div class="ann-actions">
+        <button class="btn-ghost btn-xs" data-annpin="${esc(a.id)}">${a.pinned ? "取消置顶" : "置顶"}</button>
         <button class="btn-ghost btn-xs" data-annedit="${esc(a.id)}">编辑</button>
         <button class="btn-del btn-xs" data-anndel="${esc(a.id)}">删除</button>
       </div>
     </div>`;
 }
 function renderOverview() {
-  const anns = state.announcements || [];
+  const anns = annSorted();
   const board = $("#announceBoard");
   if (board) {
     board.hidden = !anns.length;
@@ -450,7 +453,7 @@ function renderCurrent() {
   // new 视图是表单，无需渲染
 }
 function renderAnnounce() {
-  const anns = state.announcements || [];
+  const anns = annSorted();
   $("#annCount").textContent = `共 ${anns.length} 条`;
   $("#annList").innerHTML = anns.length
     ? anns.map((a) => annEditorHtml(a)).join("")
@@ -663,6 +666,12 @@ $("#annList").addEventListener("click", async (e) => {
   if (del) {
     if (!window.confirm("确定删除这条公告？")) return;
     try { await api(`/api/announcements/${encodeURIComponent(del.dataset.anndel)}/delete`, { method: "POST" }); editingAnnId = null; await loadMembers(); renderCurrent(); toast("已删除"); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  const pin = e.target.closest("[data-annpin]");
+  if (pin) {
+    try { await api(`/api/announcements/${encodeURIComponent(pin.dataset.annpin)}/pin`, { method: "POST" }); await loadMembers(); renderCurrent(); }
     catch (err) { toast(err.message); }
     return;
   }

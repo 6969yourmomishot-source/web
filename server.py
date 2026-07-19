@@ -394,6 +394,9 @@ class Handler(SimpleHTTPRequestHandler):
         m = re.match(r"^/api/announcements/([^/]+)/delete$", path)
         if m:
             return self._delete_announcement(user, m.group(1))
+        m = re.match(r"^/api/announcements/([^/]+)/pin$", path)
+        if m:
+            return self._pin_announcement(user, m.group(1))
         m = re.match(r"^/api/announcements/([^/]+)$", path)
         if m:
             return self._edit_announcement(user, m.group(1), body)
@@ -687,6 +690,15 @@ class Handler(SimpleHTTPRequestHandler):
             if a["id"] == aid:
                 a["text"] = text
                 a["updatedAt"] = now_iso()
+                save_data(data)
+                return self._send_json(a)
+        return self._send_json({"error": "公告不存在"}, 404)
+
+    def _pin_announcement(self, user, aid):
+        data = load_data() or {"members": [], "seq": 1000}
+        for a in data.get("announcements") or []:
+            if a["id"] == aid:
+                a["pinned"] = not a.get("pinned", False)
                 save_data(data)
                 return self._send_json(a)
         return self._send_json({"error": "公告不存在"}, 404)
