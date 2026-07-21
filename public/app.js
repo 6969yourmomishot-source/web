@@ -437,7 +437,7 @@ const META = {
   pending:  { title: "待处理",   sub: "设置提交中会员的状态" },
   new:      { title: "新增",     sub: "新增提交会员" },
   history:  { title: "历史纪录", sub: "提交过的所有会员" },
-  announce: { title: "公告编辑", sub: "编辑总览公告（管理员）" },
+  announce: { title: "交接公告编辑", sub: "编辑总览交接公告（管理员）" },
   accounts: { title: "账号管理", sub: "开设 / 删除账号（管理员）" },
   settings: { title: "设置",     sub: "群组与自动删除（管理员）" },
 };
@@ -457,7 +457,7 @@ function renderAnnounce() {
   $("#annCount").textContent = `共 ${anns.length} 条`;
   $("#annList").innerHTML = anns.length
     ? anns.map((a) => annEditorHtml(a)).join("")
-    : `<p class="muted tiny" style="padding:12px">还没有公告</p>`;
+    : `<p class="muted tiny" style="padding:12px">还没有交接公告</p>`;
 }
 
 // ---------- 渲染：账号管理 ----------
@@ -664,7 +664,7 @@ $("#postAnnounceBtn").addEventListener("click", async () => {
 $("#annList").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-anndel]");
   if (del) {
-    if (!window.confirm("确定删除这条公告？")) return;
+    if (!window.confirm("确定删除这条交接公告？")) return;
     try { await api(`/api/announcements/${encodeURIComponent(del.dataset.anndel)}/delete`, { method: "POST" }); editingAnnId = null; await loadMembers(); renderCurrent(); toast("已删除"); }
     catch (err) { toast(err.message); }
     return;
