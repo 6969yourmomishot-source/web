@@ -745,6 +745,21 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     ensure_data()
+    # cschat6 聊天室自动导入（仅 CSCHAT_ENABLE=1 时启动，否则无影响）
+    try:
+        import chat_importer
+        chat_importer.start({
+            "lock": _lock,
+            "load": load_data,
+            "save": save_data,
+            "make_member": make_member,
+            "next_id": next_member_id,
+            "enforce_cap": enforce_cap,
+            "get_config": get_config,
+            "set_config": set_config,
+        })
+    except Exception as e:
+        print("chat_importer 未启动:", e)
     handler = functools.partial(Handler, directory=ROOT)
     server = ThreadingHTTPServer(("0.0.0.0", PORT), handler)
     print("=" * 48)
