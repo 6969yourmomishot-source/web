@@ -11,11 +11,19 @@ cschat6 客服聊天室 → 待处理 自动导入模块（零依赖，仅标准
 
 全部通过环境变量配置，未开启(CSCHAT_ENABLE≠1)则不启动、不影响原站点。
 
+两种登录方式（二选一）：
+  A. Cookie 直连（推荐/无需2FA密钥）：手动登录后复制 pai-dan.client cookie
+     CSCHAT_COOKIE     = pai-dan.client=xxxxx   （约30天过期，过期换一次）
+  B. 自动登录（需要TOTP密钥，可永久无人值守）：
+     CSCHAT_USERNAME / CSCHAT_PASSWORD / CSCHAT_TOTP_SECRET
+  两者都给时优先用 Cookie。
+
 环境变量：
   CSCHAT_ENABLE        = 1 才启动
-  CSCHAT_USERNAME      = 登录账号（如 DG7766）
-  CSCHAT_PASSWORD      = 登录密码
-  CSCHAT_TOTP_SECRET   = 2FA 密钥种子（base32，如 JBSWY3DPEHPK3PXP）
+  CSCHAT_COOKIE        = pai-dan.client=... （方式A）
+  CSCHAT_USERNAME      = 登录账号（方式B，如 DG7766）
+  CSCHAT_PASSWORD      = 登录密码（方式B）
+  CSCHAT_TOTP_SECRET   = 2FA 密钥种子（方式B，base32）
   CSCHAT_ROOM_ID       = 群组ID（默认 藍色小精靈 6905bdf80aa3f30011f5ec9a）
   CSCHAT_POLL_SEC      = 轮询间隔秒（默认 30）
   CSCHAT_DRY_RUN       = 1 则只打印「会抓到什么」，不真正写入（首次验证用）
@@ -63,10 +71,15 @@ def totp_now(secret_b32, digits=6, period=30, t=None):
 
 # --------------------------------------------------------- cschat6 客户端
 class Cschat:
-    def __init__(self, username, password, totp_secret):
+    def __init__(self, username="", password="", totp_secret="", cookie=""):
         self.username = username
         self.password = password
         self.totp_secret = totp_secret
+        c = (cookie or "").strip()
+        if c and "=" not in c:                 # 只贴了值，补上 name
+            c = "pai-dan.client=" + c
+        self.cookie_header = c
+        self.cookie_mode = bool(c)             # 有 cookie 就走直连模式
         self._new_opener()
 
     def _new_opener(self):
@@ -83,6 +96,8 @@ class Cschat:
             "Origin": ORIGIN,
             "Referer": ORIGIN + "/",
         }
+        if self.cookie_header:                 # 直连模式：手动带 cookie
+            headers["Cookie"] = self.cookie_header
         if data is not None:
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
@@ -91,7 +106,10 @@ class Cschat:
         return json.loads(raw) if raw.strip() else {}
 
     def login(self):
-        """账号密码 → TOTP 两步登录，成功后 cookie 存在 self.cj。"""
+        """方式A(cookie直连)：无需登录。方式B：账号密码→TOTP 两步登录。"""
+        if self.cookie_mode:
+            _log("使用 cookie 直连（不登录）")
+            return
         self._new_opener()
         self._req("POST", "/login",
                   {"username": self.username, "password": self.password})
@@ -100,13 +118,16 @@ class Cschat:
         _log("登录成功")
 
     def messages(self, room_id, limit=50):
-        """拉群组消息（最新在前）。cookie 失效(401/403)自动重登一次。"""
+        """拉群组消息（最新在前）。cookie 失效(401/403)：方式B自动重登，方式A提示更新。"""
         path = ("/chat-messages?chatRoomId=%s&order=desc&sort=createdAt&limit=%d"
                 % (room_id, limit))
         try:
             res = self._req("GET", path)
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
+                if self.cookie_mode:
+                    _log("⚠ cookie 已失效，请更新 Railway 的 CSCHAT_COOKIE 环境变量")
+                    raise
                 _log("cookie 失效，重新登录…")
                 self.login()
                 res = self._req("GET", path)
@@ -192,7 +213,8 @@ class Importer:
     def __init__(self, deps, cfg):
         self.deps = deps                      # server.py 注入的数据函数
         self.cfg = cfg
-        self.client = Cschat(cfg["username"], cfg["password"], cfg["totp_secret"])
+        self.client = Cschat(cfg["username"], cfg["password"],
+                             cfg["totp_secret"], cfg["cookie"])
 
     def ensure_groups(self):
         """确保设置里有 早班/中班/晚班 三个群组。"""
@@ -289,6 +311,7 @@ def start(deps):
     if os.environ.get("CSCHAT_ENABLE", "").strip() not in ("1", "true", "yes", "on"):
         return
     cfg = {
+        "cookie": os.environ.get("CSCHAT_COOKIE", "").strip(),
         "username": os.environ.get("CSCHAT_USERNAME", "").strip(),
         "password": os.environ.get("CSCHAT_PASSWORD", ""),
         "totp_secret": os.environ.get("CSCHAT_TOTP_SECRET", "").strip(),
@@ -296,8 +319,9 @@ def start(deps):
         "poll_sec": max(10, int(os.environ.get("CSCHAT_POLL_SEC", "30") or 30)),
         "dry_run": os.environ.get("CSCHAT_DRY_RUN", "").strip() in ("1", "true", "yes", "on"),
     }
-    if not (cfg["username"] and cfg["password"] and cfg["totp_secret"]):
-        _log("已启用但缺少 账号/密码/TOTP 密钥，未启动")
+    has_login = cfg["username"] and cfg["password"] and cfg["totp_secret"]
+    if not (cfg["cookie"] or has_login):
+        _log("已启用但既无 CSCHAT_COOKIE，也无完整 账号/密码/TOTP，未启动")
         return
     t = threading.Thread(target=Importer(deps, cfg).run, daemon=True)
     t.start()
